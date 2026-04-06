@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Görsel Seçim — Film Haritası</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+/* ── Reset ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Mono',monospace;background:#f0f0ee;color:#111;font-size:12px;min-height:100vh}
+button,input,select{font-family:inherit}
+
+/* ── Sticky Header Kapsayıcısı ── */
+#sticky-header {
+  position: -webkit-sticky; /* iOS Safari desteği */
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #fff;
+}
+
+/* ── Top bar ── */
+#topbar{
+  background:#fff;
+  border-bottom:1px solid #ddd;
+  display:grid;grid-template-columns:1fr auto;align-items:center;
+  gap:8px;padding:10px 14px;
+}
+.tb-left{display:flex;align-items:center;gap:10px;min-width:0;overflow:hidden}
+.tb-title{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#999;flex-shrink:0}
+.tb-stats{display:flex;gap:8px;flex-wrap:wrap;overflow:hidden}
+.tb-stat{font-size:10px;color:#888;white-space:nowrap}
+.tb-stat b{color:#111;font-weight:400}
+.tb-stat.hi b{color:#1a7f4b}
+.tb-actions{display:flex;gap:6px;align-items:center;}
+.tb-btn{
+  padding:6px 14px;border:1px solid #ddd;background:#fff;
+  font-size:10px;letter-spacing:1px;text-transform:uppercase;flex-shrink:0;
+  -webkit-tap-highlight-color:transparent;cursor:pointer;
+}
+.tb-btn:hover:not(:disabled){background:#f5f5f5}
+.tb-btn:disabled{color:#aaa;cursor:default;}
+.tb-btn.primary{background:#111;color:#fff;border-color:#111}
+.tb-btn.primary:hover:not(:disabled){background:#333}
+.tb-btn.primary:disabled{background:#bbb;border-color:#bbb;color:#fff;}
+.tb-badge{
+  display:inline-block;background:#f03010;color:#fff;
+  font-size:8px;padding:1px 5px;margin-left:4px;vertical-align:middle;border-radius:2px;
+}
+
+/* ── Filter bar ── */
+#filterbar{
+  background:#fff;border-bottom:1px solid #ddd;
+  padding:8px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+}
+.f-tabs{display:flex;gap:4px}
+.f-tab{
+  padding:5px 12px;border:1px solid #ddd;background:#fff;
+  font-size:9px;letter-spacing:1px;text-transform:uppercase;
+  -webkit-tap-highlight-color:transparent;cursor:pointer;
+}
+.f-tab.on{background:#111;color:#fff;border-color:#111}
+.f-tab:hover:not(.on){background:#f5f5f5}
+.f-search{
+  border:1px solid #ddd;background:#fff;
+  padding:5px 10px;font-size:11px;flex:1;min-width:140px;
+}
+.f-search:focus{outline:none;border-color:#999}
+.f-count{font-size:10px;color:#ccc;letter-spacing:1px;white-space:nowrap}
+
+/* ── Content ── */
+#content{padding:16px 14px;max-width:1600px}
+
+/* ── Film section ── */
+.film-section{margin-bottom:32px}
+.film-hdr{
+  display:flex;flex-direction:column;gap:8px;
+  margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #e0e0e0;
+}
+@media(min-width:640px){
+  .film-hdr{flex-direction:row;align-items:flex-start;}
+}
+.film-hdr-left{flex:1;min-width:0}
+.film-name{font-size:13px;margin-bottom:5px;line-height:1.3}
+.film-pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{
+  font-size:9px;letter-spacing:.5px;color:#888;
+  background:#efefed;padding:2px 8px;white-space:nowrap;
+}
+.pill b{color:#444;font-weight:400;letter-spacing:0;font-size:10px}
+.film-hdr-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.film-count{font-size:10px;color:#aaa;white-space:nowrap}
+.film-count b{color:#111;font-weight:400}
+.film-btn{
+  padding:4px 10px;border:1px solid #ddd;background:#fff;
+  font-size:9px;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;cursor:pointer;
+}
+.film-btn:hover{background:#f5f5f5}
+
+/* ── Image grid ── */
+.img-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:6px;
+}
+@media(min-width:480px){ .img-grid{grid-template-columns:repeat(3,1fr)} }
+@media(min-width:720px){ .img-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))} }
+@media(min-width:1100px){ .img-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))} }
+
+/* ── Image card ── */
+.img-card{
+  position:relative;aspect-ratio:16/9;overflow:hidden;
+  background:#e4e4e2;border:2px solid transparent;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:border-color .12s;
+}
+.img-card:hover{border-color:#ccc}
+.img-card.selected{border-color:#f03010}
+.img-card img{width:100%;height:100%;object-fit:cover;display:block}
+.no-img{
+  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  font-size:8px;color:#aaa;letter-spacing:1px;background:#e8e8e6;
+}
+/* tick */
+.tick{
+  position:absolute;top:5px;right:5px;
+  width:16px;height:16px;border-radius:50%;background:#f03010;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .12s;pointer-events:none;
+}
+.tick svg{width:8px;height:8px;fill:none;stroke:#fff;stroke-width:2.5;stroke-linecap:round}
+.img-card.selected .tick{opacity:1}
+/* mekan badge — clickable */
+.mekan-badge{
+  position:absolute;bottom:0;left:0;right:0;
+  background:rgba(0,0,0,.55);color:#fff;
+  font-size:8px;padding:3px 6px;letter-spacing:.3px;
+  display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;
+}
+.mekan-badge:hover{background:rgba(0,0,0,.72)}
+.mekan-badge .mekan-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mekan-badge .mekan-icon{opacity:.6;font-size:8px;margin-left:4px;flex-shrink:0}
+.img-id{
+  position:absolute;top:4px;left:4px;
+  background:rgba(0,0,0,.45);color:#fff;
+  font-size:7px;padding:1px 4px;letter-spacing:.3px;pointer-events:none;
+}
+/* sil btn */
+.sil-btn{
+  position:absolute;top:4px;right:26px;
+  padding:2px 7px;background:rgba(0,0,0,.55);color:#fff;
+  font-size:7px;letter-spacing:1px;text-transform:uppercase;
+  border:none;opacity:0;transition:opacity .12s;cursor:pointer;
+}
+.sil-btn:hover{background:rgba(210,30,10,.8)}
+.img-card:hover .sil-btn{opacity:1}
+/* mobile: always show sil on touch */
+@media(hover:none){
+  .sil-btn,.mekan-badge{opacity:1}
+}
+
+/* ── Mekan modal ── */
+#mekanModal{
+  position:fixed;inset:0;z-index:200;
+  display:flex;align-items:flex-end;justify-content:center;
+  background:rgba(0,0,0,.45);
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+#mekanModal.open{opacity:1;pointer-events:auto}
+.modal-box{
+  background:#fff;width:100%;max-width:480px;
+  max-height:80vh;display:flex;flex-direction:column;
+  border-top:2px solid #111;
+}
+@media(min-width:640px){
+  #mekanModal{align-items:center}
+  .modal-box{border:1px solid #ddd;border-top:2px solid #111;max-height:70vh}
+}
+.modal-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px;border-bottom:1px solid #eee;flex-shrink:0;
+}
+.modal-hdr-title{font-size:10px;letter-spacing:1.5px;text-transform:uppercase}
+.modal-close{
+  padding:4px 10px;border:1px solid #ddd;background:#fff;
+  font-size:9px;letter-spacing:1px;cursor:pointer;
+}
+.modal-close:hover{background:#f5f5f5}
+.modal-search{
+  display:block;width:100%;border:none;border-bottom:1px solid #eee;
+  padding:10px 14px;font-size:12px;font-family:'DM Mono',monospace;
+  background:#fafafa;
+}
+.modal-search:focus{outline:none;background:#fff}
+.modal-list{overflow-y:auto;flex:1}
+.modal-item{
+  display:block;width:100%;text-align:left;
+  padding:10px 14px;border:none;background:#fff;
+  font-size:11px;font-family:'DM Mono',monospace;
+  border-bottom:1px solid #f0f0f0;cursor:pointer;
+}
+.modal-item:hover{background:#f5f5f5}
+.modal-item.on{background:#f0f0f0;font-weight:bold}
+.modal-item.clear{color:#aaa;font-size:10px;letter-spacing:1px}
+
+/* ── Empty ── */
+#emptyState{text-align:center;padding:60px 20px;color:#bbb}
+.empty-icon{font-size:24px;opacity:.2;margin-bottom:10px}
+.empty-t{font-size:10px;letter-spacing:2px;text-transform:uppercase}
+.empty-s{font-size:10px;margin-top:8px;color:#ccc}
+
+/* ── Toast ── */
+#toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:#111;color:#fff;padding:7px 18px;font-size:10px;letter-spacing:1px;
+  opacity:0;transition:opacity .18s;pointer-events:none;z-index:300;white-space:nowrap;
+}
+#toast.show{opacity:1}
+#toast.err{background:#f03010}
+
+/* ── Loading ── */
+#loading{
+  position:fixed;inset:0;background:rgba(255,255,255,.8);z-index:250;
+  display:none;align-items:center;justify-content:center;
+  font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#888;
+}
+#loading.show{display:flex}
+</style>
+</head>
+<body>
+
+<!-- İkisini saran sticky kapsayıcı -->
+<div id="sticky-header">
+  <div id="topbar">
+    <div class="tb-left">
+      <span class="tb-title">Görsel Seçim</span>
+      <div class="tb-stats">
+        <span class="tb-stat"    id="stTotal"><b>—</b> görsel</span>
+        <span class="tb-stat hi" id="stSel"  ><b>—</b> seçili</span>
+        <span class="tb-stat"    id="stPend" ><b>—</b> bekliyor</span>
+      </div>
+    </div>
+    <div class="tb-actions">
+      <button class="tb-btn" id="discardBtn" onclick="discardChanges()" disabled>Vazgeç</button>
+      <button class="tb-btn primary" id="saveBtn" onclick="saveAll()" disabled>
+        Kaydet<span class="tb-badge" id="badge" style="display:none">0</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="filterbar">
+    <div class="f-tabs">
+      <button class="f-tab on" onclick="setF('all',this)">Tümü</button>
+      <button class="f-tab"    onclick="setF('sel',this)">Seçili</button>
+      <button class="f-tab"    onclick="setF('pend',this)">Bekliyor</button>
+    </div>
+    <input class="f-search" id="srch" placeholder="Film veya yönetmen…" oninput="setSrch(this.value)">
+    <span class="f-count" id="fCount">— film</span>
+  </div>
+</div>
+
+<div id="content">
+  <div id="emptyState">
+    <div class="empty-icon">▤</div>
+    <div class="empty-t">Yükleniyor…</div>
+    <div class="empty-s">Görseller çekiliyor</div>
+  </div>
+  <div id="filmList" style="display:none"></div>
+</div>
+
+<!-- Mekan modal -->
+<div id="mekanModal" onclick="modalBg(event)">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span class="modal-hdr-title">Mekan Seç <span id="modalCount" style="color:#aaa;font-size:9px;letter-spacing:1px"></span></span>
+      <div style="display:flex;gap:6px">
+        <button class="modal-close" onclick="applyMekan()">✓ Uygula</button>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+    </div>
+    <input class="modal-search" id="modalSrch" placeholder="Mekan ara…" oninput="filterModal(this.value)">
+    <div class="modal-list" id="modalList"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="loading"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// KURULUM — bu iki değeri doldurun
+// ════════════════════════════════════════════════════════════════
+var SCRIPT_URL  = 'https://script.google.com/macros/s/AKfycbwwQrziiNQ1z48BVrdLHxdKdrD0XD18wbwnaCbpK0kOBg2GON6-S7larCMrPwDG4vFKQw/exec';
+var GORSEL_GID  = '1877749729';
+
+// Sabit değerler (değişmez)
+var SHEETS_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXt4zT3CyoU90VGbFB8zUjGaqErL2l-CVSXoHE0JExFEDtCMoeEkZOsoR1ir3vLONtrspJAwG1kZSA/pub?output=csv';
+var GID_FILMLER = '0';
+var GID_MEKANLAR = '314226555';
+
+// ════════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════════
+var items    = [];   // {id, filmAdi, mekan, url, secimDurumu}
+var filmInfo = {};   // filmAdi → {yil, yonetmen, tur}
+var mekanlar = [];   // string[]
+
+// selections: {id: {secimDurumu, mekan}}
+var sel   = {};
+var orig  = {};
+
+var activeF = 'all';
+var srch    = '';
+
+// Mekan modal state
+var modalGorselId = null;
+
+// ════════════════════════════════════════════════════════════════
+// LOAD
+// ════════════════════════════════════════════════════════════════
+async function init() {
+  if (!GORSEL_GID || GORSEL_GID === 'BURAYA_GORSELLER_GID') {
+    document.getElementById('emptyState').querySelector('.empty-t').textContent = 'GID eksik';
+    document.getElementById('emptyState').querySelector('.empty-s').textContent =
+      'URL\'e ?gid=XXXXX parametresi ekleyin (Görseller sayfasının GID\'si)';
+    return;
+  }
+  showLoad(true);
+  try {
+    var [fRes, gRes, mRes] = await Promise.all([
+      fetch(SHEETS_BASE + '&gid=' + GID_FILMLER),
+      fetch(SHEETS_BASE + '&gid=' + GORSEL_GID),
+      fetch(SHEETS_BASE + '&gid=' + GID_MEKANLAR)
+    ]);
+
+    var [fTxt, gTxt, mTxt] = await Promise.all([fRes.text(), gRes.text(), mRes.text()]);
+
+    // Filmler → info map
+    filmInfo = {};
+    csv(fTxt).slice(1).forEach(function(r) {
+      var ad = (r[1]||'').trim();
+      if (ad) filmInfo[ad] = {
+        yonetmen: (r[3]||'').trim(),
+        tur:      ((r[4]||'').split(',')[0]).trim(),
+        yil:      (r[5]||'').trim()
+      };
+    });
+
+    // Mekanlar → B sütunu (index 1)
+    mekanlar = csv(mTxt).slice(1)
+      .map(function(r){ return (r[1]||'').trim(); })
+      .filter(function(n){ return n.length > 0; })
+      .sort(function(a,b){ return a.localeCompare(b,'tr'); });
+
+    // Görseller: A=ID B=Film C=Mekan D=URL E=Durum
+    sel = {}; orig = {};
+    items = csv(gTxt).slice(1)
+      .filter(function(r){ return r[0] && r[3]; })
+      .map(function(r) {
+        var st = String(r[4]||'').trim();
+        return { id:r[0].trim(), filmAdi:(r[1]||'').trim(), mekan:(r[2]||'').trim(), url:r[3].trim(), secimDurumu:st };
+      });
+
+    items.forEach(function(it) {
+      sel[it.id]  = { secimDurumu: it.secimDurumu, mekan: it.mekan };
+      orig[it.id] = { secimDurumu: it.secimDurumu, mekan: it.mekan };
+    });
+
+    render();
+    showToast(items.length + ' görsel yüklendi');
+  } catch(e) { showToast('Yükleme hatası: ' + e.message, true); }
+  showLoad(false);
+}
+
+// ════════════════════════════════════════════════════════════════
+// CSV PARSE
+// ════════════════════════════════════════════════════════════════
+function csv(txt) {
+  var rows = [], lines = txt.split('\n');
+  for (var li=0; li<lines.length; li++) {
+    var line = lines[li].trim(); if (!line) continue;
+    var cols=[], cur='', inQ=false;
+    for (var i=0; i<line.length; i++) {
+      var c=line[i];
+      if (c==='"') { inQ=!inQ; }
+      else if (c===','&&!inQ) { cols.push(cur.trim()); cur=''; }
+      else cur+=c;
+    }
+    cols.push(cur.trim());
+    rows.push(cols);
+  }
+  return rows;
+}
+
+// ════════════════════════════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════════════════════════════
+function visItems(filt) {
+  var f = filt || activeF;
+  return items.filter(function(it) {
+    var st = sel[it.id].secimDurumu;
+    if (st === 'x') return false; // 'x'=elendi, '0'=eski başlangıç (incelenmedi sayılır)
+    if (f === 'sel')  return st === '1';
+    if (f === 'pend') return st !== '1';
+    return true;
+  });
+}
+
+function visFilms() {
+  var all  = visItems(), films=[], seen={};
+  var q    = srch.toLowerCase();
+  all.forEach(function(it) {
+    if (q) {
+      var inf = filmInfo[it.filmAdi]||{};
+      if (!it.filmAdi.toLowerCase().includes(q) && !(inf.yonetmen||'').toLowerCase().includes(q)) return;
+    }
+    if (!seen[it.filmAdi]) { seen[it.filmAdi]=true; films.push(it.filmAdi); }
+  });
+  return films;
+}
+
+function render() {
+  var films = visFilms();
+  var list  = document.getElementById('filmList');
+  var empty = document.getElementById('emptyState');
+  if (!items.length) { list.style.display='none'; empty.style.display=''; return; }
+  empty.style.display='none'; list.style.display='';
+
+  list.innerHTML = films.map(function(filmAdi) {
+    var inf  = filmInfo[filmAdi]||{};
+    var fVis = visItems().filter(function(it){ return it.filmAdi===filmAdi; });
+    var selN = fVis.filter(function(it){ return sel[it.id].secimDurumu==='1'; }).length;
+    var allS = fVis.length>0 && selN===fVis.length;
+
+    var pills = '';
+    if (inf.yil)      pills += '<span class="pill">Yıl <b>'+inf.yil+'</b></span>';
+    if (inf.yonetmen) pills += '<span class="pill">Yönetmen <b>'+inf.yonetmen+'</b></span>';
+    if (inf.tur)      pills += '<span class="pill">Tür <b>'+inf.tur+'</b></span>';
+    pills += '<span class="pill">Görsel <b>'+fVis.length+'</b></span>';
+
+    var fesc = esc(filmAdi);
+    var cards = fVis.map(function(it) {
+      var on   = sel[it.id].secimDurumu==='1';
+      var mk   = sel[it.id].mekan||'';
+      var ie   = esc(it.id);
+      return '<div class="img-card'+(on?' selected':'')+'" onclick="tog(\''+ie+'\')">' +
+        '<img src="'+it.url+'" loading="lazy" alt="'+it.id+'" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'">' +
+        '<div class="no-img" style="display:none">Yüklenemedi</div>' +
+        '<div class="tick"><svg viewBox="0 0 9 8"><polyline points="1,4 3.5,7 8,1"/></svg></div>' +
+        '<div class="img-id">'+it.id+'</div>' +
+        '<button class="sil-btn" onclick="sil(event,\''+ie+'\')">Sil</button>' +
+        '<div class="mekan-badge" onclick="openModal(event,\''+ie+'\')">' +
+          '<span class="mekan-name">'+_mekanLabel(mk)+'</span>' +
+          '<span class="mekan-icon">▾</span>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    var secId = 'S'+filmAdi.replace(/[^a-zA-Z0-9]/g,'_');
+    return '<div class="film-section" id="'+secId+'">' +
+      '<div class="film-hdr">' +
+        '<div class="film-hdr-left"><div class="film-name">'+filmAdi+'</div><div class="film-pills">'+pills+'</div></div>' +
+        '<div class="film-hdr-right">' +
+          '<span class="film-count" id="fc_'+secId+'"><b>'+selN+'</b> / '+fVis.length+' seçili</span>' +
+          '<button class="film-btn" onclick="togFilm(\''+fesc+'\','+!allS+')">'+
+            (allS?'Seçimi Kaldır':'Tümünü Seç')+'</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="img-grid">'+cards+'</div>' +
+    '</div>';
+  }).join('');
+
+  updateStats();
+}
+
+function updateStats() {
+  var all  = visItems('all');
+  var selN = all.filter(function(it){ return sel[it.id].secimDurumu==='1'; }).length;
+  var pend = all.filter(function(it){ return sel[it.id].secimDurumu!=='1'; }).length;
+  var chg  = countChanged();
+  var films= visFilms();
+
+  document.getElementById('stTotal').innerHTML = '<b>'+all.length+'</b> görsel';
+  document.getElementById('stSel'  ).innerHTML = '<b>'+selN+'</b> seçili';
+  document.getElementById('stPend' ).innerHTML = '<b>'+pend+'</b> bekliyor';
+  document.getElementById('fCount' ).textContent = films.length+' film';
+  var badge = document.getElementById('badge');
+  badge.textContent = chg; badge.style.display = chg ? '' : 'none';
+  
+  var hasChanges = chg > 0;
+  document.getElementById('saveBtn').disabled = !hasChanges;
+  document.getElementById('discardBtn').disabled = !hasChanges;
+}
+
+function countChanged() {
+  return Object.keys(sel).filter(function(id){
+    return sel[id].secimDurumu!==orig[id].secimDurumu || sel[id].mekan!==orig[id].mekan;
+  }).length;
+}
+
+// ════════════════════════════════════════════════════════════════
+// INTERACTIONS
+// ════════════════════════════════════════════════════════════════
+function tog(id) {
+  sel[id].secimDurumu = sel[id].secimDurumu==='1' ? '' : '1';
+  var card = cardEl(id); if (card) card.classList.toggle('selected', sel[id].secimDurumu==='1');
+  refreshFilmHdr(filmOf(id));
+  updateStats();
+}
+
+function sil(e, id) {
+  e.stopPropagation();
+  sel[id].secimDurumu = 'x';
+  var card = cardEl(id);
+  if (card) { card.style.opacity='0'; card.style.pointerEvents='none'; setTimeout(function(){ card.remove(); },180); }
+  var film = filmOf(id);
+  setTimeout(function(){
+    refreshFilmHdr(film);
+    var fVis = visItems().filter(function(it){ return it.filmAdi===film; });
+    if (!fVis.length) {
+      var sec = document.getElementById('S'+film.replace(/[^a-zA-Z0-9]/g,'_'));
+      if (sec) { sec.style.opacity='0'; setTimeout(function(){ sec.remove(); },180); }
+    }
+  }, 200);
+  updateStats();
+}
+
+function togFilm(filmAdi, newVal) {
+  visItems().filter(function(it){ return it.filmAdi===filmAdi; }).forEach(function(it){
+    sel[it.id].secimDurumu = newVal ? '1' : '';
+    var card = cardEl(it.id); if (card) card.classList.toggle('selected', newVal);
+  });
+  refreshFilmHdr(filmAdi);
+  updateStats();
+}
+
+function discardChanges() {
+  if (countChanged() === 0) return;
+  if (!confirm('Tüm kaydedilmemiş değişiklikleri iptal etmek istediğinize emin misiniz?')) return;
+  
+  Object.keys(sel).forEach(function(id) {
+    sel[id].secimDurumu = orig[id].secimDurumu;
+    sel[id].mekan = orig[id].mekan;
+  });
+  
+  render();
+  showToast('Değişiklikler geri alındı');
+}
+
+// ── Mekan (çoklu seçim) ──────────────────────────────────────────
+var modalSelected = [];
+
+function _mekanLabel(mk) {
+  if (!mk) return 'Mekan seç…';
+  var p = mk.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+  if (!p.length) return 'Mekan seç…';
+  return p.length === 1 ? p[0] : p[0] + ' +' + (p.length-1);
+}
+
+function openModal(e, id) {
+  e.stopPropagation();
+  modalGorselId = id;
+  var cur = (sel[id] && sel[id].mekan) || '';
+  modalSelected = cur ? cur.split(',').map(function(s){ return s.trim(); }).filter(Boolean) : [];
+  document.getElementById('modalSrch').value = '';
+  buildModalList('');
+  document.getElementById('mekanModal').classList.add('open');
+  document.getElementById('modalSrch').focus();
+}
+
+function closeModal() {
+  document.getElementById('mekanModal').classList.remove('open');
+  modalGorselId = null;
+  modalSelected = [];
+}
+
+function applyMekan() {
+  if (!modalGorselId) return;
+  var joined = modalSelected.join(', ');
+  sel[modalGorselId].mekan = joined;
+  var card = cardEl(modalGorselId);
+  if (card) {
+    var b = card.querySelector('.mekan-name');
+    if (b) b.textContent = _mekanLabel(joined);
+  }
+  updateStats();
+  closeModal();
+}
+
+function modalBg(e) {
+  if (e.target === document.getElementById('mekanModal')) applyMekan();
+}
+
+function filterModal(q) { buildModalList(q); }
+
+function buildModalList(q) {
+  var list  = document.getElementById('modalList');
+  var cnt   = document.getElementById('modalCount');
+  var filt  = mekanlar.filter(function(m){ return !q || m.toLowerCase().includes(q.toLowerCase()); });
+  if (cnt) cnt.textContent = modalSelected.length ? modalSelected.length + ' seçili' : '';
+  var html = '<button class="modal-item clear" onclick="clearMekanAll()">— Tümünü kaldır —</button>';
+  html += filt.map(function(m){
+    var on = modalSelected.indexOf(m) >= 0;
+    return '<button class="modal-item'+(on?' on':'')+'" onclick="toggleMekanItem(\''+esc(m)+'\')">'+(on?'✓ ':'  ')+m+'</button>';
+  }).join('');
+  list.innerHTML = html;
+}
+
+function toggleMekanItem(m) {
+  var idx = modalSelected.indexOf(m);
+  if (idx >= 0) modalSelected.splice(idx,1); else modalSelected.push(m);
+  buildModalList(document.getElementById('modalSrch').value);
+}
+
+function clearMekanAll() {
+  modalSelected = [];
+  buildModalList(document.getElementById('modalSrch').value);
+}
+
+function setMekan(m) { /* legacy */ }
+
+
+// ════════════════════════════════════════════════════════════════
+// SAVE
+// ════════════════════════════════════════════════════════════════
+async function saveAll() {
+  var updates = Object.keys(sel)
+    .filter(function(id){ return sel[id].secimDurumu!==orig[id].secimDurumu||sel[id].mekan!==orig[id].mekan; })
+    .map(function(id){ return { id:id, secimDurumu:sel[id].secimDurumu, mekan:sel[id].mekan }; });
+  if (!updates.length) { showToast('Değişiklik yok'); return; }
+
+  showLoad(true);
+  document.getElementById('saveBtn').disabled = true;
+  document.getElementById('discardBtn').disabled = true;
+  // text/plain: preflight tetiklemez → GAS CORS sorunu olmaz
+  var ok = false;
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ updates: updates })
+    });
+    ok = true;
+  } catch(e) { showToast('Bağlantı hatası: ' + e.message, true); }
+  if (ok) {
+    updates.forEach(function(u){ orig[u.id].secimDurumu=u.secimDurumu; orig[u.id].mekan=u.mekan; });
+    updateStats();
+    showToast(updates.length + ' kayıt güncellendi');
+  } else {
+    document.getElementById('saveBtn').disabled = false;
+    document.getElementById('discardBtn').disabled = false;
+  }
+  showLoad(false);
+}
+
+// ════════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════════
+function setF(f, btn) {
+  activeF = f;
+  document.querySelectorAll('.f-tab').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+  render();
+}
+
+function setSrch(v) { srch = v; render(); }
+
+function filmOf(id) { var it=items.find(function(i){ return i.id===id; }); return it?it.filmAdi:''; }
+
+function cardEl(id) {
+  var ie = esc(id);
+  return document.querySelector('[onclick="tog(\''+ie+'\')"]');
+}
+
+function refreshFilmHdr(filmAdi) {
+  if (!filmAdi) return;
+  var secId = 'S'+filmAdi.replace(/[^a-zA-Z0-9]/g,'_');
+  var sec   = document.getElementById(secId); if (!sec) return;
+  var fVis  = visItems().filter(function(it){ return it.filmAdi===filmAdi; });
+  var selN  = fVis.filter(function(it){ return sel[it.id].secimDurumu==='1'; }).length;
+  var allS  = fVis.length>0 && selN===fVis.length;
+  var fc    = document.getElementById('fc_'+secId);
+  var btn   = sec.querySelector('.film-btn');
+  if (fc)  fc.innerHTML  = '<b>'+selN+'</b> / '+fVis.length+' seçili';
+  if (btn) { btn.textContent=allS?'Seçimi Kaldır':'Tümünü Seç'; btn.setAttribute('onclick','togFilm(\''+esc(filmAdi)+'\','+!allS+')'); }
+}
+
+function esc(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+function showToast(msg, isErr) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'show'+(isErr?' err':'');
+  clearTimeout(t._t); t._t = setTimeout(function(){ t.className=''; }, 3000);
+}
+
+function showLoad(on) { document.getElementById('loading').textContent = on ? 'Yükleniyor…' : ''; document.getElementById('loading').classList.toggle('show', on); }
+
+// Modal keyboard
+document.getElementById('modalSrch').addEventListener('keydown', function(e){
+  if (e.key === 'Escape') closeModal();
+});
+
+// Init
+init();
+</script>
+</body>
+</html>
