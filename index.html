@@ -13,22 +13,23 @@
   --border:#e0dedd;--muted:#9a9896;--surface:#fff;--card-border:#e6e4e2;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-text-size-adjust:100%}
-body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--black);font-size:11px;min-height:100vh;-webkit-font-smoothing:antialiased;}
+html{-webkit-text-size-adjust:100%;overflow-x:hidden}
+body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--black);font-size:11px;min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden;width:100%;}
 button,input{font-family:inherit;cursor:pointer}
 img{display:block}
-#header{position:sticky;top:0;z-index:90;background:var(--surface);border-bottom:1px solid var(--border);}
-#topbar{display:flex;align-items:center;padding:0 16px;height:48px;gap:12px;}
-.tb-brand{font-family:'Teko',sans-serif;font-size:18px;font-weight:500;letter-spacing:.5px;color:var(--black);flex-shrink:0;line-height:1;}
+#header{position:fixed;top:0;left:0;right:0;z-index:90;background:var(--surface);border-bottom:1px solid var(--border);}
+#topbar{display:flex;align-items:center;padding:0 12px;min-height:48px;gap:8px;flex-wrap:wrap;}
+.tb-brand{font-family:'Teko',sans-serif;font-size:16px;font-weight:500;letter-spacing:.5px;color:var(--black);flex-shrink:0;line-height:1;}
 .tb-brand em{color:var(--red);font-style:normal}
 .tb-divider{width:1px;height:16px;background:var(--border);flex-shrink:0}
-.tb-stats{display:flex;gap:12px;min-width:0;overflow:hidden}
+.tb-stats{display:flex;gap:8px;min-width:0;overflow:hidden}
+@media(max-width:400px){.tb-stats{display:none}}
 .tb-stat{font-size:10px;color:var(--muted);white-space:nowrap}
 .tb-stat strong{color:var(--black);font-weight:400}
 .tb-stat.accent strong{color:var(--red)}
 .tb-gap{flex:1}
 .tb-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
-.btn{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 14px;border:1px solid var(--border);background:var(--surface);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;transition:all .12s;white-space:nowrap;-webkit-tap-highlight-color:transparent;}
+.btn{display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 10px;border:1px solid var(--border);background:var(--surface);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.6px;text-transform:uppercase;cursor:pointer;transition:all .12s;white-space:nowrap;-webkit-tap-highlight-color:transparent;}
 .btn:hover:not(:disabled){background:var(--bg)}
 .btn:active:not(:disabled){transform:scale(.97)}
 .btn:disabled{color:#bbb;cursor:default}
@@ -45,7 +46,7 @@ img{display:block}
 .f-search::placeholder{color:var(--muted)}
 .f-search:focus{outline:none;border-color:#aaa;background:#fff}
 .f-count{font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0}
-#content{padding:20px 16px;max-width:1600px;margin:0 auto}
+#content{padding:20px 16px;padding-top:110px;max-width:1600px;margin:0 auto}
 .film-section{margin-bottom:36px}
 .film-hdr{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;padding-bottom:10px;border-bottom:2px solid var(--black);}
 .film-hdr-left{flex:1;min-width:0}
@@ -80,10 +81,10 @@ img{display:block}
 .mekan-name.placeholder{color:rgba(255,255,255,.5);font-style:italic}
 .mekan-arr{flex-shrink:0;font-size:8px;opacity:.5;}
 @media(hover:none){.mekan-badge{opacity:1}}
-.zoom-btn{position:absolute;top:4px;left:30px;width:18px;height:18px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .12s;}
+.zoom-btn{position:absolute;top:4px;left:30px;width:18px;height:18px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:1;transition:opacity .12s;}
 .zoom-btn:hover{background:rgba(0,0,0,.75)}
 .img-card:hover .zoom-btn{opacity:1}
-@media(hover:none){.zoom-btn{opacity:1}}
+.zoom-btn{opacity:1}
 #emptyState{display:flex;flex-direction:column;align-items:center;padding:80px 20px;color:var(--muted);}
 .empty-icon{font-family:'Teko',sans-serif;font-size:64px;font-weight:400;color:var(--border);line-height:1;margin-bottom:16px;}
 .empty-t{font-size:10px;letter-spacing:2px;text-transform:uppercase}
