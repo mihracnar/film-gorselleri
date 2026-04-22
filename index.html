@@ -316,6 +316,30 @@ async function init() {
   showLoad(false);
 }
 
+
+function applyFilter(){
+  // Her kart data-status='1'|''|'x' taşıyor, CSS ile filtrele
+  var cards=document.querySelectorAll('.img-card');
+  cards.forEach(function(card){
+    var st=card.dataset.status||'';
+    var show=true;
+    if(st==='x'){ show=false; }
+    else if(activeF==='sel')  show=st==='1';
+    else if(activeF==='pend') show=st!=='1';
+    card.style.display=show?'':'none';
+  });
+  // Film section'larını gizle eğer hiç görünen kart yoksa
+  document.querySelectorAll('.film-section').forEach(function(sec){
+    var visible=Array.from(sec.querySelectorAll('.img-card')).some(function(c){return c.style.display!=='none';});
+    sec.style.display=visible?'':'none';
+  });
+  // Decade group'ları da gizle
+  document.querySelectorAll('.decade-group').forEach(function(dg){
+    var visible=Array.from(dg.querySelectorAll('.film-section')).some(function(s){return s.style.display!=='none';});
+    dg.style.display=visible?'':'none';
+  });
+  document.getElementById('fCount').textContent=visFilms().length+' film';
+}
 function visItems(f){
   f=f||activeF;
   return items.filter(function(it){
@@ -398,6 +422,7 @@ function render(){
 
       var card=document.createElement('div');
       card.className='img-card'+(on?' selected':'');
+      card.dataset.status=on?'1':'';
       card.setAttribute('role','checkbox');
       card.setAttribute('aria-checked',on?'true':'false');
       card.dataset.id=it.id;
@@ -486,7 +511,13 @@ function changed(){
 function tog(id){
   sel[id].secimDurumu=sel[id].secimDurumu==='1'?'':'1';
   var card=cardEl(id);
-  if(card){card.classList.toggle('selected',sel[id].secimDurumu==='1');card.setAttribute('aria-checked',sel[id].secimDurumu==='1'?'true':'false');}
+  if(card){
+    var on=sel[id].secimDurumu==='1';
+    card.classList.toggle('selected',on);
+    card.setAttribute('aria-checked',on?'true':'false');
+    card.dataset.status=on?'1':'';
+    if(activeF!=='all') applyFilter();
+  }
   refreshHdr(filmOf(id));updateStats();
 }
 
@@ -510,8 +541,13 @@ function togFilm(filmAdi,newVal){
   visItems().filter(function(it){return it.filmAdi===filmAdi;}).forEach(function(it){
     sel[it.id].secimDurumu=newVal?'1':'';
     var card=cardEl(it.id);
-    if(card){card.classList.toggle('selected',newVal);card.setAttribute('aria-checked',newVal?'true':'false');}
+    if(card){
+      card.classList.toggle('selected',newVal);
+      card.setAttribute('aria-checked',newVal?'true':'false');
+      card.dataset.status=newVal?'1':'';
+    }
   });
+  if(activeF!=='all') applyFilter();
   refreshHdr(filmAdi);updateStats();
 }
 
@@ -597,7 +633,13 @@ async function saveAll(){
   showLoad(false);
 }
 
-function setF(f,btn){activeF=f;document.querySelectorAll('.f-tab').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');render();}
+function setF(f,btn){
+  activeF=f;
+  document.querySelectorAll('.f-tab').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  applyFilter();
+  updateStats();
+}
 var _srchTimer=null;
 function setSrch(v){
   srch=v;
