@@ -249,6 +249,14 @@ var items=[], filmInfo={}, mekanlar=[], sel={}, orig={};
 var activeF='all', srch='', modalGorselId=null, modalSelected=[];
 var lbItems=[], lbCur=0;
 
+function driveToImgUrl(url) {
+  if (!url) return url;
+  if (url.includes('lh3.google')) return url;
+  var m = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) return 'https://lh3.googleusercontent.com/d/' + m[1];
+  return url;
+}
+
 function parseCsv(txt) {
   var rows=[],lines=txt.split('\n');
   for(var li=0;li<lines.length;li++){
@@ -280,6 +288,7 @@ async function init() {
       var ad=(r[1]||'').trim();
       if(ad) filmInfo[ad]={yonetmen:(r[3]||'').trim(),tur:((r[4]||'').split(',')[0]).trim(),yil:(r[5]||'').trim()};
     });
+    console.log('[DEBUG] filmInfo örnek:', Object.keys(filmInfo).slice(0,3).map(function(k){return k+' yil='+filmInfo[k].yil;}));
 
     mekanlar=parseCsv(mTxt).slice(1)
       .map(function(r){return(r[1]||'').trim();})
@@ -291,8 +300,11 @@ async function init() {
       .filter(function(r){return r[0]&&r[3];})
       .map(function(r){
         var st=String(r[4]||'').trim();
-        return{id:r[0].trim(),filmAdi:(r[1]||'').trim(),mekan:(r[2]||'').trim(),url:r[3].trim(),secimDurumu:st};
+        var fAdi=(r[1]||'').trim().replace(/\s+/g,' ');
+        return{id:r[0].trim(),filmAdi:fAdi,mekan:(r[2]||'').trim(),url:driveToImgUrl(r[3].trim()),secimDurumu:st};
       });
+    var xItems=items.filter(function(it){return it.secimDurumu==='x';});
+    console.log('[DEBUG] Sheetten gelen x sayisi:', xItems.length, xItems.slice(0,3).map(function(it){return it.id;}));
     items.forEach(function(it){
       sel[it.id]={secimDurumu:it.secimDurumu,mekan:it.mekan};
       orig[it.id]={secimDurumu:it.secimDurumu,mekan:it.mekan};
@@ -308,7 +320,10 @@ function visItems(f){
   f=f||activeF;
   return items.filter(function(it){
     var st=sel[it.id].secimDurumu;
-    if(st==='x') return false;
+    if(st==='x'){
+      console.log('[DEBUG] x filtresi:', it.id, it.filmAdi);
+      return false;
+    }
     if(f==='sel') return st==='1';
     if(f==='pend') return st!=='1';
     return true;
@@ -347,6 +362,7 @@ function render(){
     var inf=filmInfo[filmAdi]||{};
     var yr=parseInt(inf.yil,10)||0;
     var dec=Math.floor(yr/10)*10;
+    if(!yr) console.log('[DEBUG] Bilinmeyen decade:', JSON.stringify(filmAdi), '| filmInfo hit:', !!filmInfo[filmAdi], '| inf.yil:', inf.yil);
     if(!byDecade[dec]) byDecade[dec]=[];
     byDecade[dec].push({filmAdi:filmAdi,yil:yr});
   });
@@ -582,11 +598,13 @@ async function saveAll(){
 }
 
 function setF(f,btn){activeF=f;document.querySelectorAll('.f-tab').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');render();}
+var _srchTimer=null;
 function setSrch(v){
   srch=v;
   var btn=document.getElementById('srchClear');
   if(btn) btn.classList.toggle('visible', v.length>0);
-  render();
+  clearTimeout(_srchTimer);
+  _srchTimer=setTimeout(render, 250);
 }
 function clearSrch(){
   document.getElementById('srch').value='';
