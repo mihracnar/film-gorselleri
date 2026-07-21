@@ -245,6 +245,9 @@ var SHEETS_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXt4zT3CyoU9
 var GID_FILMLER  = '0';
 var GID_MEKANLAR = '314226555';
 
+// Debug flag: konsol loglarını açmak istersen window.debug.log = true yap
+window.debug = window.debug || { log:false };
+
 var items=[], filmInfo={}, mekanlar=[], sel={}, orig={};
 var activeF='all', srch='', modalGorselId=null, modalSelected=[];
 var lbItems=[], lbCur=0;
@@ -288,7 +291,7 @@ async function init() {
       var ad=(r[1]||'').trim();
       if(ad) filmInfo[ad]={yonetmen:(r[3]||'').trim(),tur:((r[4]||'').split(',')[0]).trim(),yil:(r[5]||'').trim()};
     });
-    console.log('[DEBUG] filmInfo örnek:', Object.keys(filmInfo).slice(0,3).map(function(k){return k+' yil='+filmInfo[k].yil;}));
+    if(window.debug.log) console.log('[DEBUG] filmInfo örnek:', Object.keys(filmInfo).slice(0,3).map(function(k){return k+' yil='+filmInfo[k].yil;}));
 
     mekanlar=parseCsv(mTxt).slice(1)
       .map(function(r){return(r[1]||'').trim();})
@@ -303,8 +306,10 @@ async function init() {
         var fAdi=(r[1]||'').trim().replace(/\s+/g,' ');
         return{id:r[0].trim(),filmAdi:fAdi,mekan:(r[2]||'').trim(),url:driveToImgUrl(r[3].trim()),secimDurumu:st};
       });
-    var xItems=items.filter(function(it){return it.secimDurumu==='x';});
-    console.log('[DEBUG] Sheetten gelen x sayisi:', xItems.length, xItems.slice(0,3).map(function(it){return it.id;}));
+    if(window.debug.log){
+      var xItems=items.filter(function(it){return it.secimDurumu==='x';});
+      console.log('[DEBUG] Sheetten gelen x sayisi:', xItems.length);
+    }
     items.forEach(function(it){
       sel[it.id]={secimDurumu:it.secimDurumu,mekan:it.mekan};
       orig[it.id]={secimDurumu:it.secimDurumu,mekan:it.mekan};
@@ -316,6 +321,23 @@ async function init() {
   showLoad(false);
 }
 
+/**
+ * Verilen kaynak diziden (varsayılan: items) 'x' işaretlileri her zaman çıkarır,
+ * ayrıca istenen filtreye (f) göre daraltır. source parametresi sayesinde
+ * render() gibi çağıranlar zaten önceden gruplanmış küçük alt dizileri
+ * geçebilir; böylece tüm items dizisi tekrar tekrar taranmaz.
+ */
+function visItems(f, source){
+  f=f||activeF;
+  source=source||items;
+  return source.filter(function(it){
+    var st=sel[it.id].secimDurumu;
+    if(st==='x') return false;
+    if(f==='sel') return st==='1';
+    if(f==='pend') return st!=='1';
+    return true;
+  });
+}
 
 function applyFilter(){
   // Her kart data-status='1'|''|'x' taşıyor, CSS ile filtrele
@@ -338,25 +360,34 @@ function applyFilter(){
     var visible=Array.from(dg.querySelectorAll('.film-section')).some(function(s){return s.style.display!=='none';});
     dg.style.display=visible?'':'none';
   });
-  document.getElementById('fCount').textContent=visFilms().length+' film';
-}
-function visItems(f){
-  f=f||activeF;
-  return items.filter(function(it){
-    var st=sel[it.id].secimDurumu;
-    if(st==='x'){
-      console.log('[DEBUG] x filtresi:', it.id, it.filmAdi);
-      return false;
-    }
-    if(f==='sel') return st==='1';
-    if(f==='pend') return st!=='1';
-    return true;
-  });
+  document.getElementById('fCount').textContent=visFilmsFast().length+' film';
 }
 
-function visFilms(){
-  var all=visItems(),films=[],seen={},q=srch.toLowerCase();
+/**
+ * Tüm 'x' olmayanları TEK GEÇİŞTE hesaplar. render(), updateStats() ve
+ * applyFilter() bu ortak listeyi kullanır; items dizisi tekrar tekrar
+ * baştan taranmaz.
+ */
+function computeAllVisible(){
+  return items.filter(function(it){return sel[it.id].secimDurumu!=='x';});
+}
+
+/** allVisible listesini filmAdi bazında gruplar (tek geçiş). */
+function groupByFilm(list){
+  var byFilm={};
+  list.forEach(function(it){
+    (byFilm[it.filmAdi]=byFilm[it.filmAdi]||[]).push(it);
+  });
+  return byFilm;
+}
+
+function visFilmsFast(){
+  var all=computeAllVisible();
+  var films=[],seen={},q=srch.toLowerCase();
   all.forEach(function(it){
+    var st=sel[it.id].secimDurumu;
+    if(activeF==='sel'  && st!=='1') return;
+    if(activeF==='pend' && st==='1') return;
     if(q){
       var inf=filmInfo[it.filmAdi]||{};
       if(!it.filmAdi.toLowerCase().includes(q)&&!(inf.yonetmen||'').toLowerCase().includes(q)) return;
@@ -374,7 +405,11 @@ function mekanLabel(mk){
 }
 
 function render(){
-  var films=visFilms();
+  // items dizisini TEK KEZ tara ve filme göre grupla.
+  var allVisible=computeAllVisible();
+  var byFilm=groupByFilm(allVisible);
+  var films=visFilmsFast();
+
   var list=document.getElementById('filmList');
   var empty=document.getElementById('emptyState');
   if(!items.length){list.style.display='none';empty.style.display='flex';return;}
@@ -386,7 +421,7 @@ function render(){
     var inf=filmInfo[filmAdi]||{};
     var yr=parseInt(inf.yil,10)||0;
     var dec=Math.floor(yr/10)*10;
-    if(!yr) console.log('[DEBUG] Bilinmeyen decade:', JSON.stringify(filmAdi), '| filmInfo hit:', !!filmInfo[filmAdi], '| inf.yil:', inf.yil);
+    if(!yr && window.debug.log) console.log('[DEBUG] Bilinmeyen decade:', JSON.stringify(filmAdi), '| filmInfo hit:', !!filmInfo[filmAdi], '| inf.yil:', inf.yil);
     if(!byDecade[dec]) byDecade[dec]=[];
     byDecade[dec].push({filmAdi:filmAdi,yil:yr});
   });
@@ -403,7 +438,8 @@ function render(){
     var filmHtml=decFilms.map(function(fd){
       var filmAdi=fd.filmAdi;
     var inf=filmInfo[filmAdi]||{};
-    var fVis=visItems().filter(function(it){return it.filmAdi===filmAdi;});
+    // Artık 6500+ satırlık items yerine, önceden gruplanmış küçük alt diziyi kullanıyoruz.
+    var fVis=visItems(activeF, byFilm[filmAdi]||[]);
     var selN=fVis.filter(function(it){return sel[it.id].secimDurumu==='1';}).length;
     var allS=fVis.length>0&&selN===fVis.length;
 
@@ -476,7 +512,7 @@ function render(){
     '</div>';
   }).join('');
 
-  updateStats();
+  updateStats(allVisible, films.length);
 }
 
 function toggleDecade(hdr){
@@ -487,15 +523,20 @@ function toggleDecade(hdr){
   arr.className='decade-hdr-arr'+(opening?' open':'');
 }
 
-function updateStats(){
-  var all=visItems('all');
+/**
+ * allVisible / filmCount opsiyonel olarak dışarıdan geçilebilir (render() içinden
+ * geldiği gibi). Verilmezse (tog/sil gibi tekil olaylardan çağrıldığında)
+ * kendi hesaplar — ama artık tek geçişli computeAllVisible/visFilmsFast kullanılıyor.
+ */
+function updateStats(allVisible, filmCount){
+  var all=allVisible||computeAllVisible();
   var selN=all.filter(function(it){return sel[it.id].secimDurumu==='1';}).length;
-  var pend=all.filter(function(it){return sel[it.id].secimDurumu!=='1';}).length;
+  var pend=all.length-selN;
   var chg=changed();
   document.getElementById('stTotal').innerHTML='<strong>'+all.length+'</strong> görsel';
   document.getElementById('stSel'  ).innerHTML='<strong>'+selN+'</strong> seçili';
   document.getElementById('stPend' ).innerHTML='<strong>'+pend+'</strong> bekliyor';
-  document.getElementById('fCount' ).textContent=visFilms().length+' film';
+  document.getElementById('fCount' ).textContent=(filmCount!=null?filmCount:visFilmsFast().length)+' film';
   var badge=document.getElementById('badge');
   badge.textContent=chg;badge.style.display=chg?'':'none';
   document.getElementById('saveBtn').disabled=chg===0;
@@ -529,7 +570,8 @@ function sil(e,id){
   var film=filmOf(id);
   setTimeout(function(){
     refreshHdr(film);
-    if(!visItems().filter(function(it){return it.filmAdi===film;}).length){
+    var stillHas=items.some(function(it){return it.filmAdi===film&&sel[it.id].secimDurumu!=='x';});
+    if(!stillHas){
       var sec=document.getElementById('S'+film.replace(/[^a-zA-Z0-9]/g,'_'));
       if(sec){sec.style.transition='opacity .18s';sec.style.opacity='0';setTimeout(function(){sec.remove();},200);}
     }
@@ -538,7 +580,7 @@ function sil(e,id){
 }
 
 function togFilm(filmAdi,newVal){
-  visItems().filter(function(it){return it.filmAdi===filmAdi;}).forEach(function(it){
+  items.filter(function(it){return it.filmAdi===filmAdi&&sel[it.id].secimDurumu!=='x';}).forEach(function(it){
     sel[it.id].secimDurumu=newVal?'1':'';
     var card=cardEl(it.id);
     if(card){
@@ -658,7 +700,7 @@ function refreshHdr(filmAdi){
   if(!filmAdi) return;
   var secId='S'+filmAdi.replace(/[^a-zA-Z0-9]/g,'_');
   var sec=document.getElementById(secId);if(!sec) return;
-  var fVis=visItems().filter(function(it){return it.filmAdi===filmAdi;});
+  var fVis=items.filter(function(it){return it.filmAdi===filmAdi&&sel[it.id].secimDurumu!=='x';});
   var selN=fVis.filter(function(it){return sel[it.id].secimDurumu==='1';}).length;
   var allS=fVis.length>0&&selN===fVis.length;
   var fc=document.getElementById('fc_'+secId);
@@ -671,7 +713,7 @@ function toast(msg,isErr){var t=document.getElementById('toast');t.textContent=m
 function showLoad(on){document.getElementById('loading').classList.toggle('show',on);}
 
 function lbOpen(filmAdi,startId){
-  var fVis=visItems().filter(function(it){return it.filmAdi===filmAdi;});
+  var fVis=items.filter(function(it){return it.filmAdi===filmAdi&&sel[it.id].secimDurumu!=='x';});
   lbItems=fVis;
   lbCur=fVis.findIndex(function(it){return it.id===startId;});
   if(lbCur<0) lbCur=0;
